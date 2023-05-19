@@ -21,7 +21,7 @@ def find_parental_fofn(wildcards):
 	return manifest_df.loc[manifest_df['family_id'] == wildcards.fam].iloc[0][f'{wildcards.parental}ernal_illumina']
 
 def find_sample_fofn(wildcards):
-	return manifest_df.at[wildcards.sample,'sample_fofn']
+	return manifest_df.at[wildcards.sample,'hifi_fofn']
 
 def find_parental_yak(wildcards):
 	family = manifest_df.at[wildcards.sample, 'family_id']

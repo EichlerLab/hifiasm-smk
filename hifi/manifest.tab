@@ -1,3 +1,3 @@
-sample	sample_fofn	maternal_illumina	paternal_illumina	family_id
-HG00733	/net/eichler/vol26/projects/1kg_high_coverage/nobackups/scratch/arozanski/HG00733_test/snake_hifiasm_trio/010721/HG00733/fastq.fofn	/net/eichler/vol26/projects/1kg_high_coverage/nobackups/scratch/arozanski/HG00733_test/snake_hifiasm_trio/010721/HG00732/fastq.fofn	/net/eichler/vol26/projects/1kg_high_coverage/nobackups/scratch/arozanski/HG00733_test/snake_hifiasm_trio/010721/HG00731/fastq.fofn	HG00733
-HG002	HG002.fofn	NA	NA	HG002
+sample	hifi_fofn	maternal_illumina	paternal_illumina	family_id
+HG00733	.test/HG00733_PB.fofn	.test/HG00732_KG.fastq.fofn	.test/HG00731_KG.fastq.fofn	HG00733
+HG002	.test/HG002_PB.fofn	NA	NA	HG002
