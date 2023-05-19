@@ -1,3 +1,0 @@
-sample	sample_ref	sample_maternal_ref	sample_paternal_ref	squashed	trio
-HG00733	/net/eichler/vol26/projects/1kg_high_coverage/nobackups/scratch/arozanski/HG00733_test/snake_hifiasm_trio/010721/HG00733/fastq.fofn	/net/eichler/vol26/projects/1kg_high_coverage/nobackups/scratch/arozanski/HG00733_test/snake_hifiasm_trio/010721/HG00732/fastq.fofn	/net/eichler/vol26/projects/1kg_high_coverage/nobackups/scratch/arozanski/HG00733_test/snake_hifiasm_trio/010721/HG00731/fastq.fofn	NO	YES
-HG00733_squashed	/net/eichler/vol26/projects/1kg_high_coverage/nobackups/scratch/arozanski/HG00733_test/snake_hifiasm_trio/010721/HG00733/fastq.fofn	NA	NA	YES	NO
