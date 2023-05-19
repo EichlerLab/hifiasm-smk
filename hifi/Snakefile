@@ -58,7 +58,6 @@ def find_final(wildcards):
         sample=trio_samples,
         version=VERSION,
     )
-
     n50_stats_bp = expand(
         "{sample}/assemblies/hifiasm/{sample}-{phase}_n50-{version}.txt",
         sample=manifest_df.index,
@@ -76,6 +75,7 @@ def find_final(wildcards):
 
 wildcard_constraints:
     version=VERSION,
+    sample="|".join(manifest_df.index),
 
 
 localrules:

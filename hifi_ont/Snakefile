@@ -15,7 +15,7 @@ VERSION = config.get("HIFIASM_VERSION", "0.16.1")
 ASM_THREADS = config.get("ASM_THREADS", 16)
 
 manifest_df = pd.read_csv(
-    MANIFEST, sep="\t", header=0, index_col="sample", dtype=str
+    MANIFEST, sep="\t", header=0, index_col="sample", dtype=str, comment="#"
 ).fillna("NA")
 
 
@@ -91,6 +91,7 @@ def find_final(wildcards):
 
 wildcard_constraints:
     version=VERSION,
+    sample="|".join(manifest_df.index),
 
 
 localrules:
