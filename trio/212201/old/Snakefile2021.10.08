@@ -1,0 +1,97 @@
+import os, sys
+import pandas as pd
+
+SNAKEMAKE_DIR = os.path.dirname(workflow.snakefile)
+
+configfile: "hifiasm_trio.yaml"
+
+MANIFEST = config['MANIFEST']
+
+manifest_df = pd.read_csv(MANIFEST, sep='\t', header=0, index_col='sample')
+
+shell.prefix("source {SNAKEMAKE_DIR}/env.cfg; ")
+
+def find_parental_fofn(wildcards):
+    return manifest_df.at[wildcards.sample,'sample_%sernal_ref' %(wildcards.parental)]
+
+def find_sample_fofn(wildcards):
+    return manifest_df.at[wildcards.sample,'sample_ref']
+
+def get_gfa(wildcards):
+    if manifest_df.at[wildcards.sample, 'trio'] == 'YES' and manifest_df.at[wildcards.sample, 'squashed'] == 'YES':
+        return(['%s/trio/%s.hifiasm.hap1.p_ctg.gfa' %(wildcards.sample,wildcards.sample),'%s/trio/%s.hifiasm.hap2.p_ctg.gfa' %(wildcards.sample,
+wildcards.sample),'%s/squashed/%s.hifiasm.p_ctg.gfa' %(wildcards.sample,wildcards.sample),'%s/squashed/%s.hifiasm.a_ctg.gfa' %(wildcards.sample,wildcards.sample)])
+
+    elif manifest_df.at[wildcards.sample, 'trio'] == 'YES':
+        return(['%s/trio/%s.hifiasm.hap1.p_ctg.gfa' %(wildcards.sample,wildcards.sample),'%s/trio/%s.hifiasm.hap2.p_ctg.gfa' %(wildcards.sample,wildcards.sample)])
+
+    elif manifest_df.at[wildcards.sample, 'squashed'] == 'YES':
+        return(['%s/squashed/%s.hifiasm.p_ctg.gfa' %(wildcards.sample,wildcards.sample),'%s/squashed/%s.hifiasm.a_ctg.gfa' %(wildcards.sample,wildcards.sample)])
+
+localrules: all
+
+rule all:
+    input:
+        expand('{sample}/trio/{sample}.hifiasm.{suffix}', sample=manifest_df.loc[manifest_df['trio'] == 'YES'].index, suffix=["dip.r_utg.gfa","hap1.p_ctg.gfa","hap2.p_ctg.gfa"]),
+        expand('{sample}/squashed/{sample}.hifiasm.{suffix}', sample=manifest_df[manifest_df['squashed'] == 'YES'].index, suffix=["p_ctg.gfa","a_ctg.gfa"]),
+	expand('make_fasta_{sample}.done', sample=manifest_df.index)
+rule hifiasm:
+    input:
+        sample_fofn_hifi = find_sample_fofn
+    output:
+        a_contig = "{sample}/squashed/{sample}.hifiasm.p_ctg.gfa",
+        p_contig = "{sample}/squashed/{sample}.hifiasm.a_ctg.gfa"
+    threads: 16
+    resources:
+        mem = 10,
+        hrs = 24
+    shell:
+        '''
+        hifiasm -o {wildcards.sample}/squashed/{wildcards.sample}.hifiasm -t{threads} $(cat {input.sample_fofn_hifi})
+        '''
+
+rule yak_parents:
+    input:
+        parental = find_parental_fofn
+    output:
+        parental_yak = "parents/{sample}.{parental}.yak",
+    wildcard_constraints:
+        parental = '|'.join(['mat', 'pat'])
+    threads: 16
+    resources:
+        mem = 8,
+        hrs = 15
+    shell:
+        '''
+        yak count -k31 -b37 -t{threads} -o {output.parental_yak} <( cat $(cat {input.parental}) ) <( cat $(cat {input.parental}) )
+        '''
+
+rule hifiasm_trio:
+    input:
+        parental = expand('parents/{{sample}}.{parental}.yak', parental=['mat','pat']),
+        sample_fofn = find_sample_fofn
+    output:
+        gfa = "{sample}/trio/{sample}.hifiasm.dip.r_utg.gfa",
+        hap1 = "{sample}/trio/{sample}.hifiasm.hap1.p_ctg.gfa",
+        hap2 = "{sample}/trio/{sample}.hifiasm.hap2.p_ctg.gfa"
+    threads: 16
+    resources:
+        mem = 14,
+        hrs = 24
+    shell:
+        '''
+        hifiasm -o {wildcards.sample}/trio/{wildcards.sample}.hifiasm -t{threads} -1 {input.parental[0]} -2 {input.parental[1]} $(cat {input.sample_fofn})
+        '''
+rule make_fasta:
+     input: 
+        gfas = get_gfa
+     output:
+        touch("make_fasta_{sample}.done")
+     threads: 1
+     resources:
+        mem = 4,
+        hrs = 1
+     run:
+        for gfa in input.gfas:
+            output_fasta=gfa+".fasta"
+            shell('{SNAKEMAKE_DIR}/make_fasta.sh %s > %s' % (gfa,output_fasta))
