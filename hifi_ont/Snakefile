@@ -1,0 +1,229 @@
+import os, sys
+import pandas as pd
+
+SNAKEMAKE_DIR = os.path.dirname(workflow.snakefile)
+
+if not os.path.exists("log"):
+   os.makedirs("log")
+
+configfile: "hifiasm_trio.yaml"
+
+MANIFEST = config.get('MANIFEST', 'manifest.tab')
+VERSION = config.get('HIFIASM_VERSION', '0.16.1')
+ASM_THREADS = config.get('ASM_THREADS', 16)
+
+
+manifest_df = pd.read_csv(MANIFEST, sep='\t', header=0, index_col='sample', dtype=str).fillna('NA')
+
+# manifest_df['family_id'] = manifest_df['family_id'].astype(str)
+
+def find_parental_fofn(wildcards):
+	return manifest_df.loc[manifest_df['family_id'] == wildcards.fam].iloc[0][f'{wildcards.parental}ernal_illumina']
+
+def find_sample_fofn(wildcards):
+	return manifest_df.at[wildcards.sample,'sample_fofn']
+
+def find_parental_yak(wildcards):
+	family = manifest_df.at[wildcards.sample, 'family_id']
+	return [f'parents/{family}/{parent}.yak' for parent in ['pat', 'mat']]
+
+
+def find_final(wildcards):
+	not_trio_samples = list(manifest_df.loc[manifest_df['maternal_illumina'] == 'NA'].index)
+	trio_samples = list(manifest_df.loc[manifest_df['maternal_illumina'] != 'NA'].index)
+	no_trio = expand("{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.{phase}.{hap}.p_ctg.gfa.fasta.fai", phase=['bp'], hap=['hap1', 'hap2'], sample=not_trio_samples+trio_samples, version=VERSION)
+	trio = expand("{sample}/assemblies/hifiasm/trio/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta", hap=['hap1', 'hap2'], sample=trio_samples, version=VERSION)
+
+	n50_stats_bp = expand('{sample}/assemblies/hifiasm/{sample}-{phase}_n50-{version}.txt', sample=manifest_df.index, phase=['bp'], version=VERSION)
+	n50_stats_dip = expand('{sample}/assemblies/hifiasm/{sample}-{phase}_n50-{version}.txt', sample=trio_samples, phase=['dip'], version=VERSION)
+	return trio+no_trio+n50_stats_bp+n50_stats_dip
+
+wildcard_constraints:
+	version = VERSION
+
+localrules: all, make_fai
+
+rule all:
+	input:
+		find_final
+
+
+rule yak_parents:
+	input:
+		parental = find_parental_fofn
+	output:
+		parental_yak = "parents/{fam}/{parental}.yak",
+	wildcard_constraints:
+		parental = '|'.join(['mat', 'pat'])
+	threads: 16
+	resources:
+		mem = 8,
+		hrs = 15
+	envmodules:
+		"modules",
+		"modules-init",
+		"modules-gs/prod",
+		"modules-eichler/prod",
+		"yak/0.1"
+	shell:
+		'''
+		yak count -k31 -b37 -t{threads} -o {output.parental_yak} <(cat $(cat {input.parental}) ) <(cat $(cat {input.parental}) )
+		'''
+
+rule hifiasm_prim:
+	input:
+		sample_fofn = find_sample_fofn
+	output:
+		asm_hap1 = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.bp.hap1.p_ctg.gfa",
+		asm_hap2 = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.bp.hap2.p_ctg.gfa"
+	threads: ASM_THREADS
+	resources:
+		mem = int(224/ASM_THREADS),
+		hrs = 900
+	envmodules:
+		"modules",
+		"modules-init",
+		"modules-gs/prod",
+		"modules-eichler/prod",
+		f"hifiasm/{VERSION}"
+	shell:
+		'''
+		hifiasm -o {wildcards.sample}/assemblies/hifiasm/{wildcards.version}/{wildcards.sample}.hifiasm -t {threads} $( cat {input.sample_fofn} )
+		'''
+
+rule hifiasm_trio:
+	input:
+		parents = find_parental_yak,
+		asm = rules.hifiasm_prim.output.asm_hap1
+	output:
+		asm_pat = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa",
+		asm_mat = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa"
+	threads: 8
+	resources:
+		mem = 14,
+		hrs = 128
+	envmodules:
+		"modules",
+		"modules-init",
+		"modules-gs/prod",
+		"modules-eichler/prod",
+		f"hifiasm/{VERSION}"
+	shell:
+		'''
+		hifiasm -o {wildcards.sample}/assemblies/hifiasm/{wildcards.version}/{wildcards.sample}.hifiasm -t {threads} -1 {input.parents[0]} -2 {input.parents[1]} /dev/null
+		'''
+
+rule make_fasta:
+	input: 
+		asm_pat = '{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.{phase}.hap1.p_ctg.gfa',
+		asm_mat = '{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.{phase}.hap2.p_ctg.gfa'
+	output:
+		fa_pat = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.{phase}.hap1.p_ctg.gfa.fasta",
+		fa_mat = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.{phase}.hap2.p_ctg.gfa.fasta"
+	threads: 1
+	resources:
+		mem = 4,
+		hrs = 1
+	envmodules:
+		"modules",
+		"modules-init",
+		"modules-gs/prod",
+		"modules-eichler/prod",
+	shell:
+		'''
+		{SNAKEMAKE_DIR}/make_fasta.sh {input.asm_pat} > {output.fa_pat}
+		{SNAKEMAKE_DIR}/make_fasta.sh {input.asm_mat} > {output.fa_mat}
+		if [[ $( echo {wildcards.phase} ) == 'dip' ]]; then
+			ln -s $( basename {output.fa_pat} ) $( echo {output.fa_pat} | sed 's/hap1/pat/' )
+			ln -s $( basename {output.fa_mat} ) $( echo {output.fa_mat} | sed 's/hap2/mat/' )
+		fi
+		'''
+
+rule make_fai:
+	input: 
+		fa_pat = rules.make_fasta.output.fa_pat,
+		fa_mat = rules.make_fasta.output.fa_mat
+	output: 
+		fai_pat = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.{phase}.hap1.p_ctg.gfa.fasta.fai", 
+		fai_mat = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.{phase}.hap2.p_ctg.gfa.fasta.fai"
+	threads: 1
+	resources:
+		mem = 4,
+		hrs = 1
+	envmodules:
+		"modules",
+		"modules-init",
+		"modules-gs/prod",
+		"modules-eichler/prod",
+		"samtools/1.12"
+	shell:
+		'''
+		samtools faidx {input.fa_pat}
+		samtools faidx {input.fa_mat}
+		'''
+
+rule get_n50:
+	input:
+		fai_pat = rules.make_fai.output.fai_pat,
+		fai_mat = rules.make_fai.output.fai_mat,
+	output:
+		n50_stats = '{sample}/assemblies/hifiasm/{sample}-{phase}_n50-{version}.txt'
+	threads: 1
+	resources:
+		mem = 1,
+		hrs = 1
+	shell:
+		'''
+		script=/net/eichler/vol26/7200/software/pipelines/compteam_tools/n50
+		# n50 stats for paternal haplotype
+		echo $(basename {input.fai_pat}) > {output.n50_stats}
+		$script {input.fai_pat} >> {output.n50_stats}
+		
+		# n50 stats for maternal haplotype
+		echo $(basename {input.fai_mat}) >> {output.n50_stats}
+		$script {input.fai_mat} >> {output.n50_stats}
+		'''
+
+rule organize_trio:
+	input:
+		fa_pat = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
+		fa_mat = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",		
+		fai_pat = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta.fai", 
+		fai_mat = "{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta.fai"
+	output:
+		fa_pat = "{sample}/assemblies/hifiasm/trio/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
+		fa_mat = "{sample}/assemblies/hifiasm/trio/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",		
+		fai_pat = "{sample}/assemblies/hifiasm/trio/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta.fai", 
+		fai_mat = "{sample}/assemblies/hifiasm/trio/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta.fai"
+	threads: 1
+	resources:
+		mem = 1,
+		hrs = 1
+	shell:
+		'''
+		cp -l {input.fa_pat} {output.fa_pat}
+		cp -l {input.fa_mat} {output.fa_mat}
+		cp -l {input.fai_pat} {output.fai_pat}
+		cp -l {input.fai_mat} {output.fai_mat}
+		ln -sf $( basename {output.fa_pat} ) $( echo {output.fa_pat} | sed 's/hap1/pat/' )
+		ln -sf $( basename {output.fa_mat} ) $( echo {output.fa_mat} | sed 's/hap2/mat/' )
+		'''
+
+
+
+# rule 
+
+# rule make_combined:
+# 	input: 
+# 		hap1 = expand("{{sample}}/trio/{{sample}}.hifiasm.dip.{hap}.p_ctg.gfa.fasta.fai", hap=['hap1', 'hap2'])  
+# 	output: 
+# 		fai = "{sample}/assemblies/hifiasm/trio/{version}/combined.fai"
+# 	envmodules:
+# 		"modules",
+# 		"modules-init",
+# 		"modules-gs/prod",
+# 		"modules-eichler/prod",
+# 	shell:
+# 		'''
+# 		cat {input.hap1} > {output.fai}
+# 		'''
