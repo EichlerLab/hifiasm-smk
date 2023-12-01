@@ -87,22 +87,20 @@ rule all:
 rule gather_psuedo:
     input:
         expand(
-            "{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.bp.{hap}.p_ctg.gfa",
+            "{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.bp.p_utg.gfa",
             sample=manifest_df.index,
             version=VERSION,
-            hap=["hap1", "hap2"],
         ),
 
 
-rule hifiasm_prim:
+rule hifiasm_prim_gfa:
     input:
         hifi_fofn=find_hifi_fofn,
         ont_fofn=find_ont_fofn,
         hifi_in=find_hifi_files,
         ont_in=find_ont_files,
     output:
-        asm_hap1="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.bp.hap1.p_ctg.gfa",
-        asm_hap2="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.bp.hap2.p_ctg.gfa",
+        gfa="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.bp.p_utg.gfa",
     threads: ASM_THREADS
     params:
         nanopore=nanopore_string,
@@ -124,7 +122,7 @@ rule hifiasm_prim:
 rule hifiasm_trio:
     input:
         yak=find_yak,
-        asm=rules.hifiasm_prim.output.asm_hap1,
+        asm=rules.hifiasm_prim_gfa.output.gfa,
     output:
         asm_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa",
         asm_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa",
