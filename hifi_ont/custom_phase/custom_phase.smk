@@ -84,6 +84,16 @@ rule all:
         find_final,
 
 
+rule gather_psuedo:
+    input:
+        expand(
+            "{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.bp.{hap}.p_ctg.gfa",
+            sample=manifest_df.index,
+            version=VERSION,
+            hap=["hap1", "hap2"],
+        ),
+
+
 rule hifiasm_prim:
     input:
         hifi_fofn=find_hifi_fofn,
