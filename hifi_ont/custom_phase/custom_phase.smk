@@ -11,7 +11,7 @@ configfile: "hifiasm_custom.yaml"
 
 
 MANIFEST = config.get("MANIFEST", "manifest_custom.tab")
-VERSION = config.get("HIFIASM_VERSION", "0.19.5")
+VERSION = config.get("HIFIASM_VERSION", "0.19.6")
 ASM_THREADS = config.get("ASM_THREADS", 16)
 
 manifest_df = pd.read_csv(
@@ -128,7 +128,7 @@ rule hifiasm_trio:
         asm_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa",
     threads: 8
     resources:
-        mem=int(336 / ASM_THREADS),
+        mem=int(336 / 8),
         hrs=128,
     envmodules:
         "modules",
