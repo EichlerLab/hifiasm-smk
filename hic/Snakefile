@@ -21,11 +21,6 @@ manifest_df = pd.read_csv(
 memory_dict = {1: 336, 2: 480}
 
 
-def find_parental_fofn(wildcards):
-    return manifest_df.loc[manifest_df["family_id"] == wildcards.fam].iloc[0][
-        f"{wildcards.parental}ernal_illumina"
-    ]
-
 
 def find_hifi_fofn(wildcards):
     return manifest_df.at[wildcards.sample, "hifi_fofn"]
@@ -75,21 +70,17 @@ def hic_string(wildcards, read_num):
 
 
 def find_final(wildcards):
-    not_trio_samples = list(
-        manifest_df.loc[manifest_df["maternal_illumina"] == "NA"].index
-    )
-    trio_samples = list(manifest_df.loc[manifest_df["maternal_illumina"] != "NA"].index)
     no_trio = expand(
         "{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.{phase}.{hap}.p_ctg.gfa.fasta.fai",
         phase=["bp"],
         hap=["hap1", "hap2"],
-        sample=not_trio_samples + trio_samples,
+        sample=manifest_df.index,
         version=VERSION,
     )
     trio = expand(
         "{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
         hap=["hap1", "hap2"],
-        sample=trio_samples,
+        sample=manifest_df.index,
         version=VERSION,
     )
     n50_stats_bp = expand(
@@ -100,7 +91,7 @@ def find_final(wildcards):
     )
     n50_stats_dip = expand(
         "{sample}/assemblies/hifiasm_ont/{sample}-{phase}_n50-{version}.txt",
-        sample=trio_samples,
+        sample=manifest_df.index,
         phase=["dip"],
         version=VERSION,
     )
