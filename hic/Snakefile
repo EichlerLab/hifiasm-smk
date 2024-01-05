@@ -61,7 +61,7 @@ def nanopore_string(wildcards):
     return ",".join(ont_files)
 
 
-def hic_string(wildcards, read_num):
+def hic_string(wildcards):
     hic_dict = {}
     for column_name in ["hic_r1_fofn", "hic_r2_fofn"]:
         with open(manifest_df.at[wildcards.sample, column_name], "r") as infile:
