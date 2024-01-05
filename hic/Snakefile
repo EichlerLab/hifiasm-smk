@@ -102,7 +102,7 @@ rule all:
             hap=["hap1", "hap2"],
             sample=manifest_df.index,
             version=VERSION,
-        )
+        ),
         n50_stats_dip = expand(
             "{sample}/assemblies/hifiasm_ont/{sample}-dip_n50-{version}.txt",
             sample=manifest_df.index,
