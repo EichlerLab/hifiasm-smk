@@ -113,28 +113,6 @@ rule all:
         find_final,
 
 
-rule yak_parents:
-    input:
-        parental=find_parental_fofn,
-    output:
-        parental_yak="parents/{fam}/{parental}.yak",
-    wildcard_constraints:
-        parental="|".join(["mat", "pat"]),
-    threads: 16
-    resources:
-        mem=8,
-        hrs=15,
-    envmodules:
-        "modules",
-        "modules-init",
-        "modules-gs/prod",
-        "modules-eichler/prod",
-        "yak/0.1",
-    shell:
-        """
-        yak count -k31 -b37 -t{threads} -o {output.parental_yak} <(cat $(cat {input.parental}) ) <(cat $(cat {input.parental}) )
-        """
-
 
 rule hifiasm_prim:
     input:
