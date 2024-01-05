@@ -145,7 +145,7 @@ rule hifiasm_trio:
         asm_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa",
     threads: 8
     resources:
-        mem=int(336 / ASM_THREADS),
+        mem=int(336 / 8),
         hrs=128,
     params:
         hic_vals = hic_string
