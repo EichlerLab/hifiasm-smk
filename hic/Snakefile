@@ -143,7 +143,7 @@ rule hifiasm_prim:
 
 rule hifiasm_trio:
     input:
-        parents=unpack(find_hic_all),
+        unpack(find_hic_all),
         asm=rules.hifiasm_prim.output.asm_hap1,
     output:
         asm_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa",
