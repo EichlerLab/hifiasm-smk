@@ -7,7 +7,7 @@ if not os.path.exists("log"):
     os.makedirs("log")
 
 
-configfile: "hifiasm_trio.yaml"
+configfile: "hifiasm_hic.yaml"
 
 
 MANIFEST = config.get("MANIFEST", "manifest.tab")
@@ -71,7 +71,7 @@ def hic_string(wildcards):
 
 def find_final(wildcards):
     trio = expand(
-        "{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
+        "{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
         hap=["hap1", "hap2"],
         sample=manifest_df.index,
         version=VERSION,
@@ -98,7 +98,7 @@ localrules:
 rule all:
     input:
         trio = expand(
-            "{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
+            "{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
             hap=["hap1", "hap2"],
             sample=manifest_df.index,
             version=VERSION,
@@ -136,7 +136,7 @@ rule hifiasm_prim:
         """
 
 
-rule hifiasm_trio:
+rule hifiasm_hic:
     input:
         unpack(find_hic_all),
         asm=rules.hifiasm_prim.output.asm_hap1,
@@ -235,17 +235,17 @@ rule get_n50:
         """
 
 
-rule organize_trio:
+rule organize_hic:
     input:
         fa_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
         fa_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",
         fai_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta.fai",
         fai_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta.fai",
     output:
-        fa_pat="{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
-        fa_mat="{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",
-        fai_pat="{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta.fai",
-        fai_mat="{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta.fai",
+        fa_pat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
+        fa_mat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",
+        fai_pat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta.fai",
+        fai_mat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta.fai",
     threads: 1
     resources:
         mem=1,
