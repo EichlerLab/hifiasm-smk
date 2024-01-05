@@ -82,7 +82,7 @@ def find_final(wildcards):
         phase=["dip"],
         version=VERSION,
     )
-    return trio + no_trio + n50_stats_bp + n50_stats_dip
+    return trio + n50_stats_dip
 
 
 wildcard_constraints:
@@ -97,9 +97,17 @@ localrules:
 
 rule all:
     input:
-        find_final,
-
-
+        trio = expand(
+            "{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
+            hap=["hap1", "hap2"],
+            sample=manifest_df.index,
+            version=VERSION,
+        )
+        n50_stats_dip = expand(
+            "{sample}/assemblies/hifiasm_ont/{sample}-dip_n50-{version}.txt",
+            sample=manifest_df.index,
+            version=VERSION,
+        )
 
 rule hifiasm_prim:
     input:
