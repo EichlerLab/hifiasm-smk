@@ -70,23 +70,10 @@ def hic_string(wildcards):
 
 
 def find_final(wildcards):
-    no_trio = expand(
-        "{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.{phase}.{hap}.p_ctg.gfa.fasta.fai",
-        phase=["bp"],
-        hap=["hap1", "hap2"],
-        sample=manifest_df.index,
-        version=VERSION,
-    )
     trio = expand(
         "{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
         hap=["hap1", "hap2"],
         sample=manifest_df.index,
-        version=VERSION,
-    )
-    n50_stats_bp = expand(
-        "{sample}/assemblies/hifiasm_ont/{sample}-{phase}_n50-{version}.txt",
-        sample=manifest_df.index,
-        phase=["bp"],
         version=VERSION,
     )
     n50_stats_dip = expand(
