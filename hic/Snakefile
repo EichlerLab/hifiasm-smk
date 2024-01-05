@@ -67,9 +67,11 @@ def nanopore_string(wildcards):
 
 
 def hic_string(wildcards, read_num):
-    with open(manifest_df.at[wildcards.sample, f"hic_{read_num}_fofn"], "r") as infile:
-        hic_files = [line.rstrip() for line in infile]
-    return ",".join(hic_files)
+    hic_dict = {}
+    for column_name in ["hic_r1_fofn", "hic_r2_fofn"]:
+        with open(manifest_df.at[wildcards.sample, column_name], "r") as infile:
+            hic_dict[column_name] = ",".join([line.rstrip() for line in infile])
+    return hic_dict
 
 
 def find_final(wildcards):
@@ -182,8 +184,7 @@ rule hifiasm_trio:
         mem=int(336 / ASM_THREADS),
         hrs=128,
     params:
-        r1_string=hic_string("r1"),
-        r2_string=hic_string("r2"),
+        unpack(hic_string)
     envmodules:
         "modules",
         "modules-init",
