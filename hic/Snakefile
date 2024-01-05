@@ -153,7 +153,7 @@ rule hifiasm_trio:
         mem=int(336 / ASM_THREADS),
         hrs=128,
     params:
-        unpack(hic_string)
+        hic_vals = hic_string
     envmodules:
         "modules",
         "modules-init",
@@ -162,7 +162,7 @@ rule hifiasm_trio:
         f"hifiasm/{VERSION}",
     shell:
         """
-        hifiasm -o {wildcards.sample}/assemblies/hifiasm_ont/{wildcards.version}/{wildcards.sample}.hifiasm -t {threads} --h1 {params.r1_string} --h2 {params.r2_string} --ul /dev/null /dev/null
+        hifiasm -o {wildcards.sample}/assemblies/hifiasm_ont/{wildcards.version}/{wildcards.sample}.hifiasm -t {threads} --h1 {params.hic_vals["hic_r1_fofn"]} --h2 {params.hic_vals["hic_r2_fofn"]} --ul /dev/null /dev/null
         """
 
 
