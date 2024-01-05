@@ -39,6 +39,7 @@ def find_parental_yak(wildcards):
     family = manifest_df.at[wildcards.sample, "family_id"]
     return [f"parents/{family}/{parent}.yak" for parent in ["pat", "mat"]]
 
+
 def find_hic_all(wildcards):
     hic_dict = {}
     for column_name in ["hic_r1_fofn", "hic_r2_fofn"]:
@@ -181,8 +182,8 @@ rule hifiasm_trio:
         mem=int(336 / ASM_THREADS),
         hrs=128,
     params:
-        r1_string = hic_string("r1")
-        r2_string = hic_string("r2")
+        r1_string=hic_string("r1"),
+        r2_string=hic_string("r2"),
     envmodules:
         "modules",
         "modules-init",
