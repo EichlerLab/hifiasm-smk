@@ -69,22 +69,6 @@ def hic_string(wildcards):
     return hic_dict
 
 
-def find_final(wildcards):
-    trio = expand(
-        "{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
-        hap=["hap1", "hap2"],
-        sample=manifest_df.index,
-        version=VERSION,
-    )
-    n50_stats_dip = expand(
-        "{sample}/assemblies/hifiasm_ont/{sample}-{phase}_n50-{version}.txt",
-        sample=manifest_df.index,
-        phase=["dip"],
-        version=VERSION,
-    )
-    return trio + n50_stats_dip
-
-
 wildcard_constraints:
     version=VERSION,
     sample="|".join(manifest_df.index),
@@ -98,13 +82,13 @@ localrules:
 rule all:
     input:
         trio = expand(
-            "{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
+            "{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.hic.{hap}.p_ctg.gfa.fasta",
             hap=["hap1", "hap2"],
             sample=manifest_df.index,
             version=VERSION,
         ),
-        n50_stats_dip = expand(
-            "{sample}/assemblies/hifiasm_ont/{sample}-dip_n50-{version}.txt",
+        n50_stats_hic = expand(
+            "{sample}/assemblies/hifiasm_ont/{sample}-hic_n50-{version}.txt",
             sample=manifest_df.index,
             version=VERSION,
         )
@@ -141,8 +125,8 @@ rule hifiasm_hic:
         unpack(find_hic_all),
         asm=rules.hifiasm_prim.output.asm_hap1,
     output:
-        asm_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa",
-        asm_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa",
+        asm_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.hic.hap1.p_ctg.gfa",
+        asm_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.hic.hap2.p_ctg.gfa",
     threads: 8
     resources:
         mem=int(336 / 8),
@@ -237,15 +221,15 @@ rule get_n50:
 
 rule organize_hic:
     input:
-        fa_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
-        fa_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",
-        fai_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta.fai",
-        fai_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta.fai",
+        fa_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.hic.hap1.p_ctg.gfa.fasta",
+        fa_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.hic.hap2.p_ctg.gfa.fasta",
+        fai_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.hic.hap1.p_ctg.gfa.fasta.fai",
+        fai_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.hic.hap2.p_ctg.gfa.fasta.fai",
     output:
-        fa_pat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
-        fa_mat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",
-        fai_pat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta.fai",
-        fai_mat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta.fai",
+        fa_pat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.hic.hap1.p_ctg.gfa.fasta",
+        fa_mat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.hic.hap2.p_ctg.gfa.fasta",
+        fai_pat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.hic.hap1.p_ctg.gfa.fasta.fai",
+        fai_mat="{sample}/assemblies/hifiasm_ont/hic/{version}/{sample}.hifiasm.hic.hap2.p_ctg.gfa.fasta.fai",
     threads: 1
     resources:
         mem=1,
