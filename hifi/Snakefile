@@ -99,12 +99,8 @@ rule yak_parents:
     resources:
         mem=8,
         hrs=15,
-    envmodules:
-        "modules",
-        "modules-init",
-        "modules-gs/prod",
-        "modules-eichler/prod",
-        "yak/0.1",
+    singularity:
+        f"docker://eichlerlab/hifiasm:{VERSION}"
     shell:
         """
         yak count -k31 -b37 -t{threads} -o {output.parental_yak} <(cat $(cat {input.parental}) ) <(cat $(cat {input.parental}) )
@@ -122,12 +118,8 @@ rule hifiasm_prim:
     resources:
         mem=int(224 / ASM_THREADS),
         hrs=900,
-    envmodules:
-        "modules",
-        "modules-init",
-        "modules-gs/prod",
-        "modules-eichler/prod",
-        f"hifiasm/{VERSION}",
+    singularity:
+        f"docker://eichlerlab/hifiasm:{VERSION}"
     shell:
         """
         hifiasm -o {wildcards.sample}/assemblies/hifiasm/{wildcards.version}/{wildcards.sample}.hifiasm -t {threads} $( cat {input.sample_fofn} )
@@ -145,12 +137,8 @@ rule hifiasm_trio:
     resources:
         mem=14,
         hrs=128,
-    envmodules:
-        "modules",
-        "modules-init",
-        "modules-gs/prod",
-        "modules-eichler/prod",
-        f"hifiasm/{VERSION}",
+    singularity:
+        f"docker://eichlerlab/hifiasm:{VERSION}"
     shell:
         """
         hifiasm -o {wildcards.sample}/assemblies/hifiasm/{wildcards.version}/{wildcards.sample}.hifiasm -t {threads} -1 {input.parents[0]} -2 {input.parents[1]} /dev/null
@@ -168,11 +156,8 @@ rule make_fasta:
     resources:
         mem=4,
         hrs=1,
-    envmodules:
-        "modules",
-        "modules-init",
-        "modules-gs/prod",
-        "modules-eichler/prod",
+    singularity:
+        f"docker://eichlerlab/hifiasm:{VERSION}"
     shell:
         """
         {SNAKEMAKE_DIR}/make_fasta.sh {input.asm_pat} > {output.fa_pat}
@@ -195,12 +180,8 @@ rule make_fai:
     resources:
         mem=4,
         hrs=1,
-    envmodules:
-        "modules",
-        "modules-init",
-        "modules-gs/prod",
-        "modules-eichler/prod",
-        "samtools/1.12",
+    singularity:
+        f"docker://eichlerlab/binf-basics:0.1"
     shell:
         """
         samtools faidx {input.fa_pat}

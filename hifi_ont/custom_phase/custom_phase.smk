@@ -107,12 +107,8 @@ rule hifiasm_prim_gfa:
     resources:
         mem=int(336 / ASM_THREADS),
         hrs=900,
-    envmodules:
-        "modules",
-        "modules-init",
-        "modules-gs/prod",
-        "modules-eichler/prod",
-        f"hifiasm/{VERSION}",
+    singularity:
+        f"docker://eichlerlab/hifiasm:{VERSION}"
     shell:
         """
         hifiasm -o {wildcards.sample}/assemblies/hifiasm_ont/{wildcards.version}/{wildcards.sample}.hifiasm -t {threads} --ul {params.nanopore} $( cat {input.hifi_fofn} )
@@ -130,12 +126,8 @@ rule hifiasm_trio:
     resources:
         mem=int(336 / 8),
         hrs=128,
-    envmodules:
-        "modules",
-        "modules-init",
-        "modules-gs/prod",
-        "modules-eichler/prod",
-        f"hifiasm/{VERSION}",
+    singularity:
+        f"docker://eichlerlab/hifiasm:{VERSION}"
     shell:
         """
         hifiasm -o {wildcards.sample}/assemblies/hifiasm_ont/{wildcards.version}/{wildcards.sample}.hifiasm -t {threads} -1 {input.yak[0]} -2 {input.yak[1]} --ul /dev/null /dev/null
@@ -153,11 +145,8 @@ rule make_fasta:
     resources:
         mem=4,
         hrs=1,
-    envmodules:
-        "modules",
-        "modules-init",
-        "modules-gs/prod",
-        "modules-eichler/prod",
+    singularity:
+        f"docker://eichlerlab/hifiasm:{VERSION}"
     shell:
         """
         {SNAKEMAKE_DIR}/make_fasta.sh {input.asm_pat} > {output.fa_pat}
@@ -180,12 +169,8 @@ rule make_fai:
     resources:
         mem=4,
         hrs=1,
-    envmodules:
-        "modules",
-        "modules-init",
-        "modules-gs/prod",
-        "modules-eichler/prod",
-        "samtools/1.12",
+    singularity:
+        f"docker://eichlerlab/binf-basics:0.1"
     shell:
         """
         samtools faidx {input.fa_pat}
