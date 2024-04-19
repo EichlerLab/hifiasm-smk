@@ -116,7 +116,7 @@ rule hifiasm_prim:
         asm_hap2="{sample}/assemblies/hifiasm/{version}/{sample}.hifiasm.bp.hap2.p_ctg.gfa",
     threads: ASM_THREADS
     resources:
-        mem=int(224 / ASM_THREADS),
+        mem=int(288 / ASM_THREADS),
         hrs=900,
     singularity:
         f"docker://eichlerlab/hifiasm:{VERSION}"

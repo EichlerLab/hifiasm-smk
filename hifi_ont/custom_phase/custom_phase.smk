@@ -50,7 +50,7 @@ def nanopore_string(wildcards):
 
 
 def find_final(wildcards):
-    trio = expand(
+    custom = expand(
         "{sample}/assemblies/hifiasm_ont/phase/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
         hap=["hap1", "hap2"],
         sample=manifest_df.index,
@@ -62,10 +62,10 @@ def find_final(wildcards):
         phase="dip",
         version=VERSION,
     )
-    return trio
+    return custom
 
 
-# return trio + n50_stats_dip
+# return custom + n50_stats_dip
 
 
 wildcard_constraints:
@@ -115,7 +115,7 @@ rule hifiasm_prim_gfa:
         """
 
 
-rule hifiasm_trio:
+rule hifiasm_custom:
     input:
         yak=find_yak,
         asm=rules.hifiasm_prim_gfa.output.gfa,
@@ -151,10 +151,6 @@ rule make_fasta:
         """
         {SNAKEMAKE_DIR}/make_fasta.sh {input.asm_pat} > {output.fa_pat}
         {SNAKEMAKE_DIR}/make_fasta.sh {input.asm_mat} > {output.fa_mat}
-        if [[ $( echo {wildcards.phase} ) == 'dip' ]]; then
-            ln -s $( basename {output.fa_pat} ) $( echo {output.fa_pat} | sed 's/hap1/pat/' )
-            ln -s $( basename {output.fa_mat} ) $( echo {output.fa_mat} | sed 's/hap2/mat/' )
-        fi
         """
 
 
@@ -201,7 +197,7 @@ rule get_n50:
         """
 
 
-rule organize_trio:
+rule organize_custom:
     input:
         fa_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
         fa_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",
@@ -222,6 +218,4 @@ rule organize_trio:
         cp -l {input.fa_mat} {output.fa_mat}
         cp -l {input.fai_pat} {output.fai_pat}
         cp -l {input.fai_mat} {output.fai_mat}
-        ln -sf $( basename {output.fa_pat} ) $( echo {output.fa_pat} | sed 's/hap1/pat/' )
-        ln -sf $( basename {output.fa_mat} ) $( echo {output.fa_mat} | sed 's/hap2/mat/' )
         """
