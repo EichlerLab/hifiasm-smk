@@ -146,7 +146,7 @@ rule make_fasta:
         mem=4,
         hrs=1,
     singularity:
-        f"docker://eichlerlab/hifiasm:{VERSION}"
+        "docker://eichlerlab/binf-basics:0.1"
     shell:
         """
         {SNAKEMAKE_DIR}/make_fasta.sh {input.asm_pat} > {output.fa_pat}
