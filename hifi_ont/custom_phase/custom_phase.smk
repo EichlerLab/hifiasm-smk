@@ -149,8 +149,8 @@ rule make_fasta:
         "docker://eichlerlab/binf-basics:0.1"
     shell:
         """
-        {SNAKEMAKE_DIR}/make_fasta.sh {input.asm_pat} > {output.fa_pat}
-        {SNAKEMAKE_DIR}/make_fasta.sh {input.asm_mat} > {output.fa_mat}
+        awk '/^S/{{print ">"$2"\\n"$3}}' {input.asm_pat} | seqtk seq -l 80 > {output.fa_pat}
+        awk '/^S/{{print ">"$2"\\n"$3}}' {input.asm_mat} | seqtk seq -l 80 > {output.fa_mat}
         """
 
 

@@ -182,8 +182,8 @@ rule make_fasta:
         "docker://eichlerlab/binf-basics:0.1"
     shell:
         """
-        {SNAKEMAKE_DIR}/make_fasta.sh {input.asm_pat} > {output.fa_pat}
-        {SNAKEMAKE_DIR}/make_fasta.sh {input.asm_mat} > {output.fa_mat}
+        awk '/^S/{{print ">"$2"\\n"$3}}' {input.asm_pat} | seqtk seq -l 80 > {output.fa_pat}
+        awk '/^S/{{print ">"$2"\\n"$3}}' {input.asm_mat} | seqtk seq -l 80 > {output.fa_mat}
         if [[ $( echo {wildcards.phase} ) == 'dip' ]]; then
             ln -s $( basename {output.fa_pat} ) $( echo {output.fa_pat} | sed 's/hap1/pat/' )
             ln -s $( basename {output.fa_mat} ) $( echo {output.fa_mat} | sed 's/hap2/mat/' )
