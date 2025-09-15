@@ -1,0 +1,3 @@
+MANIFEST: manifest_custom.tab
+HIFIASM_VERSION: 0.19.9
+ASM_THREADS: 16

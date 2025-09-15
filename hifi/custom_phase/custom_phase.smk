@@ -7,24 +7,16 @@ if not os.path.exists("log"):
     os.makedirs("log")
 
 
-configfile: "hifiasm_trio.yaml"
+configfile: "hifiasm_custom.yaml"
 
 
-MANIFEST = config.get("MANIFEST", "manifest.tab")
+MANIFEST = config.get("MANIFEST", "manifest_custom.tab")
 VERSION = config.get("HIFIASM_VERSION", "0.19.9")
 ASM_THREADS = config.get("ASM_THREADS", 16)
 
 manifest_df = pd.read_csv(
     MANIFEST, sep="\t", header=0, index_col="sample", dtype=str, comment="#"
 ).fillna("NA")
-
-memory_dict = {1: 336, 2: 480}
-
-
-def find_parental_fofn(wildcards):
-    return manifest_df.loc[manifest_df["family_id"] == wildcards.fam].iloc[0][
-        f"{wildcards.parental}ernal_illumina"
-    ]
 
 
 def find_hifi_fofn(wildcards):
@@ -35,9 +27,8 @@ def find_ont_fofn(wildcards):
     return manifest_df.at[wildcards.sample, "ont_fofn"]
 
 
-def find_parental_yak(wildcards):
-    family = manifest_df.at[wildcards.sample, "family_id"]
-    return [f"parents/{family}/{parent}.yak" for parent in ["pat", "mat"]]
+def find_yak(wildcards):
+    return [manifest_df.at[wildcards.sample, x] for x in ["hap1_yak", "hap2_yak"]]
 
 
 def find_ont_files(wildcards):
@@ -59,41 +50,28 @@ def nanopore_string(wildcards):
 
 
 def find_final(wildcards):
-    not_trio_samples = list(
-        manifest_df.loc[manifest_df["maternal_illumina"] == "NA"].index
-    )
-    trio_samples = list(manifest_df.loc[manifest_df["maternal_illumina"] != "NA"].index)
-    no_trio = expand(
-        "{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.{phase}.{hap}.p_ctg.gfa.fasta.fai",
-        phase=["bp"],
+    custom = expand(
+        "{sample}/assemblies/hifiasm_ont/phase/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
         hap=["hap1", "hap2"],
-        sample=not_trio_samples + trio_samples,
-        version=VERSION,
-    )
-    trio = expand(
-        "{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.{hap}.p_ctg.gfa.fasta",
-        hap=["hap1", "hap2"],
-        sample=trio_samples,
-        version=VERSION,
-    )
-    n50_stats_bp = expand(
-        "{sample}/assemblies/hifiasm_ont/{sample}-{phase}_n50-{version}.txt",
         sample=manifest_df.index,
-        phase=["bp"],
         version=VERSION,
     )
     n50_stats_dip = expand(
-        "{sample}/assemblies/hifiasm_ont/{sample}-{phase}_n50-{version}.txt",
-        sample=trio_samples,
-        phase=["dip"],
+        "{sample}/assemblies/hifiasm_ont/{sample}-{phase}-custom_n50-{version}.txt",
+        sample=manifest_df.index,
+        phase="dip",
         version=VERSION,
     )
-    return trio + no_trio + n50_stats_bp + n50_stats_dip
+    return custom
+
+
+# return custom + n50_stats_dip
 
 
 wildcard_constraints:
     version=VERSION,
     sample="|".join(manifest_df.index),
+    phase="dip|bp",
 
 
 localrules:
@@ -106,39 +84,28 @@ rule all:
         find_final,
 
 
-rule yak_parents:
+rule gather_psuedo:
     input:
-        parental=find_parental_fofn,
-    output:
-        parental_yak="parents/{fam}/{parental}.yak",
-    wildcard_constraints:
-        parental="|".join(["mat", "pat"]),
-    threads: 16
-    resources:
-        mem=8,
-        hrs=15,
-    singularity:
-        f"docker://eichlerlab/hifiasm:{VERSION}"
-    shell:
-        """
-        yak count -k31 -b37 -t{threads} -o {output.parental_yak} <(cat $(cat {input.parental}) ) <(cat $(cat {input.parental}) )
-        """
+        expand(
+            "{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.bp.p_utg.gfa",
+            sample=manifest_df.index,
+            version=VERSION,
+        ),
 
 
-rule hifiasm_prim:
+rule hifiasm_prim_gfa:
     input:
         hifi_fofn=find_hifi_fofn,
         ont_fofn=find_ont_fofn,
         hifi_in=find_hifi_files,
         ont_in=find_ont_files,
     output:
-        asm_hap1="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.bp.hap1.p_ctg.gfa",
-        asm_hap2="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.bp.hap2.p_ctg.gfa",
+        gfa="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.bp.p_utg.gfa",
     threads: ASM_THREADS
     params:
         nanopore=nanopore_string,
     resources:
-        mem=lambda wildcards, attempt: int(memory_dict[attempt] / ASM_THREADS),
+        mem=int(336 / ASM_THREADS),
         hrs=900,
     singularity:
         f"docker://eichlerlab/hifiasm:{VERSION}"
@@ -148,22 +115,22 @@ rule hifiasm_prim:
         """
 
 
-rule hifiasm_trio:
+rule hifiasm_custom:
     input:
-        parents=find_parental_yak,
-        asm=rules.hifiasm_prim.output.asm_hap1,
+        yak=find_yak,
+        asm=rules.hifiasm_prim_gfa.output.gfa,
     output:
         asm_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa",
         asm_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa",
     threads: 8
     resources:
-        mem=lambda wildcards,attempt: min(int(336 / ASM_THREADS) * attempt,700),
+        mem=int(336 / 8),
         hrs=128,
     singularity:
         f"docker://eichlerlab/hifiasm:{VERSION}"
     shell:
         """
-        hifiasm -o {wildcards.sample}/assemblies/hifiasm_ont/{wildcards.version}/{wildcards.sample}.hifiasm -t {threads} -1 {input.parents[0]} -2 {input.parents[1]} --ul /dev/null /dev/null
+        hifiasm -o {wildcards.sample}/assemblies/hifiasm_ont/{wildcards.version}/{wildcards.sample}.hifiasm -t {threads} -1 {input.yak[0]} -2 {input.yak[1]} --ul /dev/null /dev/null
         """
 
 
@@ -184,10 +151,6 @@ rule make_fasta:
         """
         awk '/^S/{{print ">"$2"\\n"$3}}' {input.asm_pat} | seqtk seq -l 80 > {output.fa_pat}
         awk '/^S/{{print ">"$2"\\n"$3}}' {input.asm_mat} | seqtk seq -l 80 > {output.fa_mat}
-        if [[ $( echo {wildcards.phase} ) == 'dip' ]]; then
-            ln -s $( basename {output.fa_pat} ) $( echo {output.fa_pat} | sed 's/hap1/pat/' )
-            ln -s $( basename {output.fa_mat} ) $( echo {output.fa_mat} | sed 's/hap2/mat/' )
-        fi
         """
 
 
@@ -234,17 +197,17 @@ rule get_n50:
         """
 
 
-rule organize_trio:
+rule organize_custom:
     input:
         fa_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
         fa_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",
         fai_pat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta.fai",
         fai_mat="{sample}/assemblies/hifiasm_ont/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta.fai",
     output:
-        fa_pat="{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
-        fa_mat="{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",
-        fai_pat="{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta.fai",
-        fai_mat="{sample}/assemblies/hifiasm_ont/trio/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta.fai",
+        fa_pat="{sample}/assemblies/hifiasm_ont/phase/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta",
+        fa_mat="{sample}/assemblies/hifiasm_ont/phase/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta",
+        fai_pat="{sample}/assemblies/hifiasm_ont/phase/{version}/{sample}.hifiasm.dip.hap1.p_ctg.gfa.fasta.fai",
+        fai_mat="{sample}/assemblies/hifiasm_ont/phase/{version}/{sample}.hifiasm.dip.hap2.p_ctg.gfa.fasta.fai",
     threads: 1
     resources:
         mem=1,
@@ -255,6 +218,4 @@ rule organize_trio:
         cp -l {input.fa_mat} {output.fa_mat}
         cp -l {input.fai_pat} {output.fai_pat}
         cp -l {input.fai_mat} {output.fai_mat}
-        ln -sf $( basename {output.fa_pat} ) $( echo {output.fa_pat} | sed 's/hap1/pat/' )
-        ln -sf $( basename {output.fa_mat} ) $( echo {output.fa_mat} | sed 's/hap2/mat/' )
         """
