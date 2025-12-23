@@ -20,10 +20,11 @@ manifest_df = pd.read_csv(
 
 
 def find_parental_fofn(wildcards):
-    return manifest_df.loc[manifest_df["family_id"] == wildcards.fam].iloc[0][
-        f"{wildcards.parental}ernal_illumina"
-    ]
-
+    paternal_col = f"{wildcards.parental}ernal_illumina"
+    paternal_fofn = manifest_df.loc[
+        (manifest_df["family_id"] == wildcards.fam) & (manifest_df[paternal_col] != "NA"), paternal_col
+        ].iloc[0]
+    return [paternal_fofn]
 
 def find_hifi_fofn(wildcards):
     return manifest_df.at[wildcards.sample, "hifi_fofn"]
